@@ -1,0 +1,8 @@
+name: Gravity
+version: 0.0.1
+author: Perri
+main: sk.perri.Gravity.Gravity
+commands:
+    gr:
+        description: default Gravity command
+        usage: /gr help
