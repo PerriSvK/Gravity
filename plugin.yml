@@ -1,5 +1,5 @@
 name: Gravity
-version: 0.0.1
+version: 1.0.0
 author: Perri
 main: sk.perri.Gravity.Gravity
 commands:
