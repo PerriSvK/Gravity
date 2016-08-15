@@ -2,9 +2,13 @@ package sk.perri.Gravity;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.scheduler.BukkitScheduler;
+import org.bukkit.scheduler.BukkitTask;
+
 import java.util.*;
 
 class GravityGame
@@ -18,7 +22,9 @@ class GravityGame
     private Map<Player, Float> players = new HashMap<>();
     private Vector<Player> winners = new Vector<>();
     private Map<Integer, Player> status = new HashMap<>();
-    private Sidebar sidebar = new Sidebar(ChatColor.AQUA.toString()+ChatColor.BOLD+"Gravity "+ChatColor.WHITE+"minigame");
+    Sidebar sidebar = new Sidebar(ChatColor.AQUA.toString()+ChatColor.BOLD+"Gravity "+ChatColor.WHITE+"minigame");
+    BukkitScheduler scheduler = Bukkit.getScheduler();
+    int task;
 
     GravityGame(Vector<GravityMap> maps, Gravity plugin)
     {
@@ -41,7 +47,7 @@ class GravityGame
         String waitMsg = "Waiting for "+ChatColor.AQUA.toString()+ChatColor.BOLD+"players";
         String statusMsg = "Status:";
         sidebar.clearEntries();
-        sidebar.addEntry(" ", waitMsg, statusMsg, players.size()+" / "+capacity);
+        sidebar.addEntry(" ", waitMsg, statusMsg, players.size()+" / "+capacity, " ", " ");
 
         sidebar.update();
     }
@@ -64,6 +70,10 @@ class GravityGame
     {
         if(isFree() && !players.containsKey(player))
         {
+            if(players.size() == 0)
+            {
+                startCountdown(120, 1);
+            }
             players.put(player, -1f);
             sidebar.removeEntry(3);
             sidebar.addEntry(players.size()+" / "+capacity);
@@ -75,6 +85,16 @@ class GravityGame
         }
 
         return false;
+    }
+
+    private void startCountdown(int time, int mode)
+    {
+        task = scheduler.scheduleSyncRepeatingTask(plugin, new Timer(time, this, mode), 0L, 20L);
+    }
+
+    private void stopCountdown()
+    {
+        scheduler.cancelTask(task);
     }
 
     public void sbBroadcast(String msg, int line)
@@ -109,6 +129,7 @@ class GravityGame
 
     void gameStart()
     {
+        stopCountdown();
         generateMapList();
         sidebar.clearEntries();
         scoreboardStartMsg();
@@ -116,8 +137,19 @@ class GravityGame
         for (Player p : players.keySet())
         {
             prevLoc.put(p, p.getLocation());
+            p.setGameMode(GameMode.ADVENTURE);
             maps.get(0).teleportPlayer(p);
             players.replace(p, 0f);
+        }
+    }
+
+    void gameEnd()
+    {
+        stopCountdown();
+        for (Player p : players.keySet())
+        {
+            p.sendMessage(ChatColor.YELLOW+"[Gravity] Game ended! Thanks for playing!");
+            removePlayer(p);
         }
     }
 
@@ -149,8 +181,18 @@ class GravityGame
                     player.getInventory().addItem(is);
                 }
 
-                player.sendMessage(ChatColor.GREEN+"[Gravity] You received your "+ChatColor.BOLD+"reward");
+                player.sendMessage(ChatColor.GREEN+"[Gravity] You received your "+ChatColor.AQUA.toString()+
+                        ChatColor.BOLD+"reward"+ChatColor.GREEN+"!");
                 plugin.gce.removePlayer(player, false, null);
+
+                for(Player p : players.keySet())
+                {
+                    p.sendMessage(ChatColor.WHITE.toString()+ChatColor.BOLD+"[Gravity] Player "+
+                            ChatColor.AQUA.toString()+ChatColor.BOLD+player.getName()+ChatColor.WHITE.toString()+
+                            ChatColor.BOLD+" win the game! 60s to complete game");
+                }
+
+                startCountdown(60, 2);
             }
         }
     }
@@ -237,6 +279,7 @@ class GravityGame
         players.remove(player);
         player.teleport(prevLoc.get(player));
         prevLoc.remove(player);
+        player.setGameMode(GameMode.SURVIVAL);
         if(winners.contains(player))
             winners.remove(player);
 

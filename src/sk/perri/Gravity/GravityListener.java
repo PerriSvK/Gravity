@@ -22,7 +22,7 @@ class GravityListener implements Listener
     {
         if(event.getEntity() instanceof Player && event.getCause().equals(EntityDamageEvent.DamageCause.FALL))
         {
-            if(plugin.players.containsKey(event.getEntity()))
+            if(plugin.players.containsKey(event.getEntity()) && plugin.players.get(event.getEntity()).isRunning())
             {
                 event.setCancelled(true);
                 event.getEntity().sendMessage(ChatColor.DARK_PURPLE+"[Gravity] Send back to map spawn!");
@@ -37,7 +37,7 @@ class GravityListener implements Listener
         if(event.getEntity() instanceof Player)
         {
             Player player = (Player) event.getEntity();
-            if (plugin.players.containsKey(player))
+            if (plugin.players.containsKey(player) && plugin.players.get(event.getEntity()).isRunning())
                 plugin.players.get(player).stageClearPortal(player);
         }
     }

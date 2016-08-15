@@ -6,3 +6,15 @@ commands:
     gr:
         description: default Gravity command
         usage: /gr help
+permissions:
+    gravity.*:
+        description: Gives access to all Gravity commands
+        children:
+              gravity.start: true
+              gravity.create: true
+    gravity.start:
+        description: Allows you to force start game
+        default: op
+    gravity.create:
+            description: Allows you to create map
+            default: op
