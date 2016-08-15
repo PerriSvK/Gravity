@@ -49,9 +49,15 @@ public class GravityCommandExecutor implements CommandExecutor
         }
         else
         {
-            plugin.players.put(sender, game);
-            game.addPlayer(sender);
-            sender.sendMessage("You joined minigame!");
+            if(game.addPlayer(sender))
+            {
+                plugin.players.put(sender, game);
+                sender.sendMessage("You joined minigame!");
+            }
+            else
+            {
+                sender.sendMessage("You are in minigame!");
+            }
         }
     }
 
@@ -88,7 +94,13 @@ public class GravityCommandExecutor implements CommandExecutor
         boolean remove = plugin.players.remove(sender, game);
 
         if(remove)
+        {
             sender.sendMessage("You left minigame!");
+            if(game.getPlayersCount() == 0)
+            {
+                plugin.games.remove(game);
+            }
+        }
         else
             sender.sendMessage("You are not in this minigame!");
     }
