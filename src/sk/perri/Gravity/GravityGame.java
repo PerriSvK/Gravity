@@ -2,29 +2,30 @@ package sk.perri.Gravity;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
-import org.bukkit.scoreboard.*;
+import org.bukkit.inventory.ItemStack;
+import java.util.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Vector;
-
-import static org.bukkit.Bukkit.getLogger;
-
-public class GravityGame
+class GravityGame
 {
-    private int capacity = 24; // how many player can be in this game
-    private int noMaps = 5; // how many maps
+    private Map<Player, Location> prevLoc = new HashMap<>();
+    private Gravity plugin;
+    private int capacity; // how many player can be in this game
+    private int noMaps; // how many maps
+    private boolean running = false;
     private Vector<GravityMap> maps = new Vector<>();
     private Map<Player, Float> players = new HashMap<>();
     private Vector<Player> winners = new Vector<>();
     private Map<Integer, Player> status = new HashMap<>();
-    private Sidebar sidebar = new Sidebar("Gravity minigame");
+    private Sidebar sidebar = new Sidebar(ChatColor.AQUA.toString()+ChatColor.BOLD+"Gravity "+ChatColor.WHITE+"minigame");
 
-    public GravityGame(Vector<GravityMap> maps)
+    GravityGame(Vector<GravityMap> maps, Gravity plugin)
     {
         this.maps = maps;
+        this.plugin = plugin;
+        capacity = plugin.CAPACITY;
+        noMaps = plugin.MAPS;
 
         if (maps.size() < noMaps)
         {
@@ -35,10 +36,9 @@ public class GravityGame
 
     }
 
-    public void setupScoreboard()
+    private void setupScoreboard()
     {
-        String none = " ";
-        String waitMsg = "Waiting for players";
+        String waitMsg = "Waiting for "+ChatColor.AQUA.toString()+ChatColor.BOLD+"players";
         String statusMsg = "Status:";
         sidebar.clearEntries();
         sidebar.addEntry(" ", waitMsg, statusMsg, players.size()+" / "+capacity);
@@ -46,21 +46,21 @@ public class GravityGame
         sidebar.update();
     }
 
-    public void scorebordStartMsg()
+    private void scoreboardStartMsg()
     {
 
         sidebar.addEntry(
         " ",
-        "1. ---",
-        "2. ---",
-        "3. ---",
-        "4. ---",
-        "5. ---");
+        ChatColor.AQUA.toString()+ChatColor.BOLD+"1."+ChatColor.WHITE+" ---",
+        ChatColor.AQUA.toString()+ChatColor.BOLD+"2."+ChatColor.WHITE+" ---",
+        ChatColor.AQUA.toString()+ChatColor.BOLD+"3."+ChatColor.WHITE+" ---",
+        ChatColor.AQUA.toString()+ChatColor.BOLD+"4."+ChatColor.WHITE+" ---",
+        ChatColor.AQUA.toString()+ChatColor.BOLD+"5."+ChatColor.WHITE+" ---");
 
         sidebar.update();
     }
 
-    public boolean addPlayer(Player player)
+    boolean addPlayer(Player player)
     {
         if(isFree() && !players.containsKey(player))
         {
@@ -92,29 +92,36 @@ public class GravityGame
         sidebar.update();
     }
 
-    public boolean isFree()
+    boolean isFree()
     {
         return players.size() < capacity;
     }
 
-    public boolean isFull()
+    private boolean isFull()
     {
         return players.size() >= capacity;
     }
 
-    public void gameStart()
+    boolean isRunning()
+    {
+        return running;
+    }
+
+    void gameStart()
     {
         generateMapList();
         sidebar.clearEntries();
-        scorebordStartMsg();
+        scoreboardStartMsg();
+        running = true;
         for (Player p : players.keySet())
         {
+            prevLoc.put(p, p.getLocation());
             maps.get(0).teleportPlayer(p);
             players.replace(p, 0f);
         }
     }
 
-    public void stageClearPortal(Player player)
+    void stageClearPortal(Player player)
     {
         if(!players.containsKey(player))
             return;
@@ -124,7 +131,7 @@ public class GravityGame
             players.replace(player,  players.get(player) + 0.25f);
             if(players.get(player) % 1 == 0)
             {
-                player.sendMessage("Stage " + Math.round(players.get(player)) + " cleared, next stage!");
+                player.sendMessage(ChatColor.GREEN+"[Gravity] Stage " + Math.round(players.get(player)) + " cleared, next stage!");
                 playerFall(player);
                 updatePosition(player, Math.round(players.get(player))-1);
                 updateScoreboard();
@@ -134,17 +141,24 @@ public class GravityGame
         {
             winners.add(player);
             players.remove(player);
-            player.sendMessage("Yeeey you finish on "+winners.size()+". place!");
+            player.sendMessage(ChatColor.GREEN+"[Gravity] Yeeey you finish on "+winners.size()+". place!");
+            if(winners.size() == 1)
+            {
+                for(ItemStack is : plugin.REWARD)
+                {
+                    player.getInventory().addItem(is);
+                }
+
+                player.sendMessage(ChatColor.GREEN+"[Gravity] You received your "+ChatColor.BOLD+"reward");
+                plugin.gce.removePlayer(player, false, null);
+            }
         }
     }
 
-    public void updatePosition(Player player, int stage)
+    private void updatePosition(Player player, int stage)
     {
         Map<Integer, Player> plTop = new HashMap<>();
         Map<Integer, Player> plBot= new HashMap<>();
-        int ind = 0;
-
-        getLogger().info("ss1 size: "+status.size()+" ss1 value 0: "+status.get(0) + " put1 plr: "+player+" "+status.keySet());
 
         if(status.containsValue(player))
         {
@@ -170,17 +184,13 @@ public class GravityGame
         else
         {
             status.put(1, player);
-            getLogger().info("createee");
         }
-
-        getLogger().info("ss size: "+status.size()+" ss value 0: "+status.get(0) + " put plr: "+player+" "+status.keySet()+" "+status.entrySet());
     }
 
-    public Player getPosition(int pos)
+    private Player getPosition(int pos)
     {
         if(winners.size() >= pos)
         {
-            getLogger().info("winner");
             return winners.get(pos-1);
         }
 
@@ -191,34 +201,30 @@ public class GravityGame
             {
                 if(i == pos)
                 {
-                    getLogger().info("pos value: " + e.getValue());
                     return e.getValue();
                 }
             }
         }
-
-        getLogger().info("status size: "+status.size()+" pos: "+pos);
         return null;
     }
 
-    public void updateScoreboard()
+    private void updateScoreboard()
     {
         for(int i = 0; i < 5; i++)
         {
             Player pl = getPosition(i+1);
-            sidebar.replaceEntry(i+1, i+1+". "+(pl != null ? pl.getName() : "---"));
-            getLogger().info("debug "+i+" "+pl);
+            sidebar.replaceEntry(i+1, ChatColor.AQUA.toString()+ChatColor.BOLD+(i+1)+". "+ChatColor.WHITE+(pl != null ? pl.getName() : "---"));
         }
 
         sidebar.update();
     }
 
-    public void playerFall(Player player)
+    void playerFall(Player player)
     {
         maps.get(Math.round(players.get(player))).teleportPlayer(player);
     }
 
-    public void generateMapList()
+    private void generateMapList()
     {
         while(maps.size() > noMaps)
         {
@@ -226,16 +232,18 @@ public class GravityGame
         }
     }
 
-    public void removePlayer(Player player)
+    void removePlayer(Player player)
     {
         players.remove(player);
+        player.teleport(prevLoc.get(player));
+        prevLoc.remove(player);
         if(winners.contains(player))
             winners.remove(player);
 
         sidebar.hideFrom(player);
     }
 
-    public int getPlayersCount()
+    int getPlayersCount()
     {
         return players.size();
     }

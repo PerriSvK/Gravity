@@ -1,5 +1,7 @@
 package sk.perri.Gravity;
 
+import org.apache.commons.lang.math.NumberUtils;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -9,12 +11,14 @@ import org.bukkit.entity.Player;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
-public class GravityCommandExecutor implements CommandExecutor
+
+class GravityCommandExecutor implements CommandExecutor
 {
     private final Gravity plugin;
 
-    public GravityCommandExecutor(Gravity plugin)
+    GravityCommandExecutor(Gravity plugin)
     {
         this.plugin = plugin;
     }
@@ -24,57 +28,126 @@ public class GravityCommandExecutor implements CommandExecutor
     {
         if(!(sender instanceof Player) || args == null)
         {
-            sender.sendMessage("This command can be cast only by players!");
+            sender.sendMessage(ChatColor.RED+"[Gravity] This command can be cast only by players!");
             return true;
         }
 
         switch (args[0])
         {
             case "join": addPlayer((Player) sender, args); break;
-            case "leave": removePlayer((Player) sender, args); break;
+            case "rjoin": quickJoin((Player) sender); break;
+            case "help": showHelp((Player) sender); break;
+            case "leave": removePlayer((Player) sender, true, args); break;
             case "create": createMap((Player) sender, args); break;
             case "start": forceStart((Player) sender, args); break;
+
+            default: showErrMsg((Player) sender);
         }
         return true;
     }
 
-    private void addPlayer(Player sender, String[] args)
+    private void quickJoin(Player sender)
     {
-        GravityGame game = findGame();
+        List<GravityGame> game = findGame();
 
-        if(game == null)
+        if (plugin.players.containsKey(sender))
         {
-            plugin.games.add(new GravityGame(plugin.maps));
-            addPlayer(sender, args);
+            sender.sendMessage(ChatColor.RED+"[Gravity] You are in minigame!");
+            return;
         }
-        else
+
+        if(game.size() == 0)
         {
-            if(game.addPlayer(sender))
+            if (plugin.games.size() < plugin.GAMES)
             {
-                plugin.players.put(sender, game);
-                sender.sendMessage("You joined minigame!");
+                plugin.games.add(new GravityGame(plugin.maps, plugin));
+                sender.sendMessage(ChatColor.YELLOW+"[Gravity] Creating new room!");
             }
             else
             {
-                sender.sendMessage("You are in minigame!");
+                sender.sendMessage(ChatColor.RED+"[Gravity] Sorry but all rooms are full!");
             }
+        }
+
+        String[] a = new String[2];
+        a[0] = "join";
+        a[1] = "1";
+        addPlayer(sender, a);
+    }
+
+    private void showHelp(Player sender)
+    {
+        sender.sendMessage(ChatColor.AQUA.toString()+ChatColor.BOLD+"[Gravity] Help for plugin Gravity:");
+        sender.sendMessage(ChatColor.AQUA.toString()+ChatColor.BOLD+"/gr join <roomNumber> "+ChatColor.WHITE+"- Join to game room");
+        sender.sendMessage(ChatColor.AQUA.toString()+ChatColor.BOLD+"/gr rjoin "+ChatColor.WHITE+"- Join to 1st found game room");
+        sender.sendMessage(ChatColor.AQUA.toString()+ChatColor.BOLD+"/gr leave "+ChatColor.WHITE+"- Leave from minigame");
+        sender.sendMessage(ChatColor.AQUA.toString()+ChatColor.BOLD+"/gr start "+ChatColor.WHITE+"- Start game in your room");
+        sender.sendMessage(ChatColor.AQUA.toString()+ChatColor.BOLD+"/gr create <mapName> "+ChatColor.WHITE+"- Setup map");
+    }
+
+    private void showErrMsg(Player sender)
+    {
+        sender.sendMessage(ChatColor.RED+"[Gravity] Use /gr help !");
+    }
+
+    private void addPlayer(Player sender, String[] args)
+    {
+        List<GravityGame> game = findGame();
+
+        if (plugin.players.containsKey(sender))
+        {
+            sender.sendMessage(ChatColor.RED+"[Gravity] You are in minigame!");
+            return;
+        }
+
+        if (args.length == 1)
+        {
+            if (game.size() == 0)
+            {
+                if (plugin.games.size() < plugin.GAMES)
+                {
+                    plugin.games.add(new GravityGame(plugin.maps, plugin));
+                    addPlayer(sender, args);
+                }
+                else
+                {
+                    sender.sendMessage(ChatColor.RED+"[Gravity] Sorry but all rooms are full!");
+                }
+            }
+            else
+            {
+                sender.sendMessage(ChatColor.AQUA.toString()+ChatColor.BOLD+"[Gravity] Available rooms:");
+                for (int i = 0; i < game.size(); i++)
+                {
+                    sender.sendMessage(ChatColor.AQUA.toString()+ChatColor.BOLD+"[Gravity] room " + (i+1) + " status: " + game.get(i).getPlayersCount() + " / " + plugin.CAPACITY);
+                }
+
+                sender.sendMessage(ChatColor.RED+"[Gravity] Use /gr join <roomNumber>");
+            }
+        }
+        else if (args.length == 2 && NumberUtils.isNumber(args[1]))
+        {
+            if (game.size() >= Integer.parseInt(args[1]) && 0 < Integer.parseInt(args[1]))
+            {
+                game.get(Integer.parseInt(args[1]) - 1).addPlayer(sender);
+                plugin.players.put(sender, game.get(Integer.parseInt(args[1]) - 1));
+                sender.sendMessage(ChatColor.GREEN+"[Gravity] You joined minigame!");
+            }
+            else
+            {
+                sender.sendMessage(ChatColor.RED+"[Gravity] Bad room number or no room created!");
+            }
+        }
+        else
+        {
+            sender.sendMessage(ChatColor.RED+"[Gravity] Use /gr join <roomNumber>");
         }
     }
 
-    private GravityGame findGame()
+    private List<GravityGame> findGame()
     {
-        GravityGame res = null;
 
-        for ( GravityGame game : plugin.games)
-        {
-            if (game.isFree())
-            {
-                res = game;
-                break;
-            }
-        }
-
-        return res;
+        return plugin.games.stream().filter(game -> !game.isRunning() && game.isFree()).collect(Collectors.toList());
     }
 
     private void forceStart(Player sender, String[] args)
@@ -84,32 +157,35 @@ public class GravityCommandExecutor implements CommandExecutor
             plugin.players.get(sender).gameStart();
         }
         else
-            sender.sendMessage("You are not in this minigame!");
+            sender.sendMessage(ChatColor.RED+"[Gravity] You are not in this minigame!");
     }
 
-    private void removePlayer(Player sender, String[] args)
+    void removePlayer(Player sender, boolean plr, String[] args)
     {
-        GravityGame game = plugin.players.get(sender);
-        game.removePlayer(sender);
-        boolean remove = plugin.players.remove(sender, game);
-
-        if(remove)
+        if(plugin.players.containsKey(sender))
         {
-            sender.sendMessage("You left minigame!");
+            GravityGame game = plugin.players.get(sender);
+            game.removePlayer(sender);
+
+            plugin.players.remove(sender, game);
+
+            if(plr)
+                sender.sendMessage(ChatColor.YELLOW+"[Gravity] You left minigame!");
+
             if(game.getPlayersCount() == 0)
             {
                 plugin.games.remove(game);
             }
         }
         else
-            sender.sendMessage("You are not in this minigame!");
+            sender.sendMessage(ChatColor.RED+"[Gravity] You are not in this minigame!");
     }
 
     private void createMap(Player sender, String[] args)
     {
         if (args == null || args.length > 2)
         {
-            sender.sendMessage("Use /gr create <mapName>");
+            sender.sendMessage(ChatColor.RED+"[Gravity] Use /gr create <mapName>");
             return;
         }
 
@@ -131,6 +207,6 @@ public class GravityCommandExecutor implements CommandExecutor
         }
 
         plugin.maps.add(map);
-        sender.sendMessage("Map created!");
+        sender.sendMessage(ChatColor.GREEN+"[Gravity] Map created!");
     }
 }

@@ -6,6 +6,7 @@
       <root id="archive" name="Gravity.jar">
         <element id="module-output" name="Gravity" />
         <element id="file-copy" path="$PROJECT_DIR$/plugin.yml" />
+        <element id="file-copy" path="$PROJECT_DIR$/config.yml" />
       </root>
     </artifact>
   </component>

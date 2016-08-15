@@ -1,0 +1,19 @@
+#this is default config for plugin Gravity
+
+#set here how much games can plugin create
+max_games: 10
+
+#set here how much maps could have one game
+max_maps: 2
+
+#players per game
+max_capacity: 1
+
+#set here reward for winnging game
+#if reward is wrong will be set default
+reward:
+    #blockid
+    Diamond:
+        amount: 3
+        name: The reward
+        lore: This fall from the sky to you
