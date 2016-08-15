@@ -26,7 +26,7 @@ public class GravityListener implements Listener
             {
                 event.setCancelled(true);
                 event.getEntity().sendMessage("Ouch that hurt!");
-                plugin.players.get(event.getEntity()).teleportPlayer((Player) event.getEntity());
+                plugin.players.get(event.getEntity()).playerFall((Player) event.getEntity());
             }
         }
     }
@@ -37,12 +37,8 @@ public class GravityListener implements Listener
         if(event.getEntity() instanceof Player)
         {
             Player player = (Player) event.getEntity();
-            player.sendMessage(plugin.players.toString());
             if (plugin.players.containsKey(player))
-            {
-                player.sendMessage("Yeeey, you win!");
-                plugin.players.get(player).teleportPlayer(player);
-            }
+                plugin.players.get(player).stageClearPortal(player);
         }
     }
 }

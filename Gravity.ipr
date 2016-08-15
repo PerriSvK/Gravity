@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ArtifactManager">
     <artifact type="jar" name="Gravity:jar">
-      <output-path>$PROJECT_DIR$/out/artifacts/Gravity_jar</output-path>
+      <output-path>D:/SpigotAPI/plugins</output-path>
       <root id="archive" name="Gravity.jar">
         <element id="module-output" name="Gravity" />
         <element id="file-copy" path="$PROJECT_DIR$/plugin.yml" />
@@ -146,6 +146,7 @@
   </component>
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="CVS" />
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
   </component>
   <component name="libraryTable">
     <library name="spigot">

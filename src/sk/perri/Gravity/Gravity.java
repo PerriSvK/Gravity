@@ -14,7 +14,8 @@ import java.util.Vector;
 
 public class Gravity extends JavaPlugin
 {
-    public Map<Player, GravityMap> players = new HashMap<>();
+    public Map<Player, GravityGame> players = new HashMap<>();
+    public Vector<GravityGame> games = new Vector<>();
     public Vector<GravityMap> maps = new Vector<>();
     public File mapsFile = new File(getDataFolder(), "maps.yml");
     public FileConfiguration mapsData;
@@ -72,8 +73,7 @@ public class Gravity extends JavaPlugin
             float[] spawnF = new float[5];
             for (int i = 0; i < spawnF.length; i++) { spawnF[i] = spawnL.get(i); }
             String world = mapsData.getString(s+".world");
-            maps.add(new GravityMap(spawnF, world, s));
+            maps.add(new GravityMap(spawnF, Bukkit.getWorld(world), s));
         }
     }
-
 }

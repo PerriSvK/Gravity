@@ -5,10 +5,8 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,7 +25,7 @@ public class GravityCommandExecutor implements CommandExecutor
         if(!(sender instanceof Player) || args == null)
         {
             sender.sendMessage("This command can be cast only by players!");
-            return false;
+            return true;
         }
 
         switch (args[0])
@@ -35,35 +33,37 @@ public class GravityCommandExecutor implements CommandExecutor
             case "join": addPlayer((Player) sender, args); break;
             case "leave": removePlayer((Player) sender, args); break;
             case "create": createMap((Player) sender, args); break;
+            case "start": forceStart((Player) sender, args); break;
         }
         return true;
     }
 
     private void addPlayer(Player sender, String[] args)
     {
-        GravityMap map = findMap();
+        GravityGame game = findGame();
 
-        if(map == null)
+        if(game == null)
         {
-            sender.sendMessage("No map avaible!");
+            plugin.games.add(new GravityGame(plugin.maps));
+            addPlayer(sender, args);
         }
         else
         {
-            plugin.players.put(sender, map);
-            map.teleportPlayer(sender);
-            sender.sendMessage("You joined minigame! Map: "+map.getName());
+            plugin.players.put(sender, game);
+            game.addPlayer(sender);
+            sender.sendMessage("You joined minigame!");
         }
     }
 
-    private GravityMap findMap()
+    private GravityGame findGame()
     {
-        GravityMap res = null;
+        GravityGame res = null;
 
-        for ( GravityMap map : plugin.maps)
+        for ( GravityGame game : plugin.games)
         {
-            if (map.isFree())
+            if (game.isFree())
             {
-                res = map;
+                res = game;
                 break;
             }
         }
@@ -71,11 +71,21 @@ public class GravityCommandExecutor implements CommandExecutor
         return res;
     }
 
+    private void forceStart(Player sender, String[] args)
+    {
+        if(plugin.players.containsKey(sender))
+        {
+            plugin.players.get(sender).gameStart();
+        }
+        else
+            sender.sendMessage("You are not in this minigame!");
+    }
+
     private void removePlayer(Player sender, String[] args)
     {
-        GravityMap map = plugin.players.get(sender);
-        map.removePlayer(sender);
-        boolean remove = plugin.players.remove(sender, map);
+        GravityGame game = plugin.players.get(sender);
+        game.removePlayer(sender);
+        boolean remove = plugin.players.remove(sender, game);
 
         if(remove)
             sender.sendMessage("You left minigame!");
@@ -99,10 +109,11 @@ public class GravityCommandExecutor implements CommandExecutor
 
         plugin.mapsData.set(args[1]+".world", loc.getWorld().getName());
         plugin.mapsData.set(args[1]+".spawn", dataL);
-        try 
+        try
         {
             plugin.mapsData.save(plugin.mapsFile);
-        } catch (IOException e)
+        }
+        catch (IOException e)
         {
             e.printStackTrace();
         }
